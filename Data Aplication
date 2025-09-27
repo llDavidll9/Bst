@@ -410,6 +410,27 @@ for (i in 1:174) {
 }
 
 
+plot(resny$dt,main="",xlab="index",ylab="Mahalanobis distance",pch=16,ylim=c(0,90))
+text(x=1:length(resny$dt)+1, y=resny$dt+3, labels=ifelse(resny$dt>quantile(resny$dt,probs=0.975),1:174,""), col="black",cex = 1.4)
+abline(a=quantile(resny$dt,probs=0.975),b=0,lty=3)
+
+plot(resnynormal$dt,main="",xlab="index",ylab="Mahalanobis distance",pch=16,ylim=c(0,50))
+text(x=1:length(resnynormal$dt)+1, y=resnynormal$dt+1.5, labels=ifelse(resnynormal$dt>quantile(resnynormal$dt,probs=0.975),1:174,""), col="black",cex = 1.4)
+abline(a=quantile(resnynormal$dt,probs=0.975),b=0,lty=3)
+
+plot(resnyt$dt,main="",xlab="index",ylab="Mahalanobis distance",pch=16,ylim=c(0,95))
+text(x=1:length(resnyt$dt)+1, y=resnyt$dt+4, labels=ifelse(resnyt$dt>quantile(resnyt$dt,probs=0.975),1:174,""), col="black",cex = 1.4)
+abline(a=quantile(resnyt$dt,probs=0.975),b=0,lty=3)
+
+plot(resnyslash$dt,main="",xlab="index",ylab="Mahalanobis distance",pch=16,ylim=c(0,145))
+text(x=1:length(resnyslash$dt)+1, y=resnyslash$dt+6, labels=ifelse(resnyslash$dt>quantile(resnyslash$dt,probs=0.975),1:174,""), col="black",cex = 1.4)
+abline(a=quantile(resnyslash$dt,probs=0.975),b=0,lty=3)
+
+plot(resnycont$dt,main="",xlab="index",ylab="Mahalanobis distance",pch=16,ylim=c(0,100))
+text(x=1:length(resnycont$dt)+1, y=resnycont$dt+5, labels=ifelse(resnycont$dt>quantile(resnycont$dt,probs=0.975),1:174,""), col="black",cex = 1.4)
+abline(a=quantile(resnycont$dt,probs=0.975),b=0,lty=3)
+
+
 
 
 
