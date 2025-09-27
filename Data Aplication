@@ -1,0 +1,417 @@
+rm(list=ls())
+
+
+source("programas_renata_helton_david.txt")
+source("gera.txt")
+library(dplyr)
+library(e1071)
+library(xtable)
+
+# Leer los datos
+rent <- read.table("dadossharpe.txt")
+
+# Aplicar log(x + 1) a todas las columnas excepto la primera
+rent_transformed <- rent
+rent_transformed[, -1] <- log(rent[, -1] + 1)
+
+# Reemplazar el dataset original con la versión transformada
+rent <- rent_transformed
+
+# Calcular los 'excess returns' restando la primera columna (V1) a las demás
+rent <- rent %>%
+  mutate(
+    V2_Excess = V2,
+    V3_Excess = V3,
+    V4_Excess = V4,
+    V5_Excess = V5,
+    V6_Excess = V6,
+    V7_Excess = V7,
+    V8_Excess = V8,
+    V9_Excess = V9,
+    V10_Excess = V10,
+    V11_Excess = V11
+  )
+
+# Mostrar tabla resumen con summary, sd, kurtosis y skewness
+
+library(xtable)
+xtable(
+  rbind(
+    summary(rent[, -c(1:11)]),
+    round(apply(rent[, -c(1:11)], 2, sd), 4),
+    round(apply(rent[, -c(1:11)], 2,  e1071::kurtosis, type = 1) + 3, 4),
+    round(apply(rent[, -c(1:11)], 2, skewness), 4)
+  )
+)
+
+y2<-exp(rent[,12])
+y3<-exp(rent[,13])
+y4<-exp(rent[,14])
+y5<-exp(rent[,15])
+y6<-exp(rent[,16])
+y7<-exp(rent[,17])
+y8<-exp(rent[,18])
+y9<-exp(rent[,19])
+y10<-exp(rent[,20])
+y11<-exp(rent[,21])
+n=dim(rent)[1]
+t<-matrix(c(y2,y3,y4,y5,y6,y7,y8,y9,y10,y11),nrow=n)
+p=dim(t)[2]
+kurtosis(vech(t))
+
+error=0.00001
+lb=matrix(rep(0.1,p),p,1)
+lu=matrix(rep(1000,p),p,1)
+source("programas.txt")
+resny=em(t,error,lb,lu,nu=1)
+resny$theta
+erroresny=erropadrao2(t,resny$theta)
+AIC=-2*resny$lk+2*(2*p+p*(p-1)/2+1)
+BIC=-2*resny$lk+(2*p+p*(p-1)/2+1)*log(n)
+HQ=-2*resny$lk+2*(2*p+p*(p-1)/2+1)*log(log(n))
+bste<-c(resny$theta,0,resny$lk,AIC,BIC,HQ)
+bste1<-c(erroresny,0,0,0,0,0)
+bste<-cbind(bste,bste1)
+##########################################normal
+#detach("package:mixtools", unload=TRUE) #in case of mixtools package called
+library(mvtnorm)
+source("programas_renata_helton_david.txt")
+resnynormal=emheltonnu(t,error,lb,lu,nu=100,dist="Normal")
+resnynormaltheta=c(resnynormal$alpha,resnynormal$beta,resnynormal$Sigma[lower.tri(resnynormal$Sigma)])
+AIC1=-2*resnynormal$lk+2*(2*p+p*(p-1)/2)
+BIC1=-2*resnynormal$lk+(2*p+p*(p-1)/2)*log(n)
+HQ1=-2*resnynormal$lk+2*(2*p+p*(p-1)/2)*log(log(n))
+#errorenynormal=erropadrao(t,resnynormaltheta)
+erronormal<-desviosgradnu(resnynormaltheta,t,"Normal")
+bsnormal1<-c(erronormal,0,0,0,0,0,0)
+bsnormal<-c(resnynormaltheta,0,0,resnynormal$lk,AIC1,BIC1,HQ1)
+bsnormal<-cbind(bsnormal,bsnormal1)
+#############################################t
+resnyt=emheltonnu(t,error,lb,lu,nu=1,dist="Student")
+resnyttheta=c(resnyt$alpha,resnyt$beta,resnyt$Sigma[lower.tri(resnyt$Sigma)],resnyt$nu)
+AIC2=-2*resnyt$lk+2*(2*p+p*(p-1)/2+1)
+BIC2=-2*resnyt$lk+(2*p+p*(p-1)/2+1)*log(n)
+HQ2=-2*resnyt$lk+2*(2*p+p*(p-1)/2+1)*log(log(n))
+bst<-c(resnyttheta,0,resnyt$lk,AIC2,BIC2,HQ2)
+errot<-desviosgradnu(resnyttheta,t,"Student")
+bst<-cbind(bst,c(errot,0,0,0,0,0))
+#############################################slash
+resnyslash=emheltonnu(t,error,lb,lu,nu=1,dist="Slash")
+resnyslashtheta=c(resnyslash$alpha,resnyslash$beta,resnyslash$Sigma[lower.tri(resnyslash$Sigma)],resnyslash$nu)
+AIC3=-2*resnyslash$lk+2*(2*p+p*(p-1)/2+1)
+BIC3=-2*resnyslash$lk+(2*p+p*(p-1)/2+1)*log(n)
+HQ3=-2*resnyslash$lk+2*(2*p+p*(p-1)/2+1)*log(log(n))
+bsslash<-c(resnyslashtheta,0,resnyslash$lk,AIC3,BIC3,HQ3)
+erroslash<-desviosgradnu(resnyslashtheta,t,"Slash")
+bsslash<-cbind(bsslash,c(erroslash,0,0,0,0,0))
+#############################################cont
+resnycont=emheltonnu(t,error,lb,lu,nu=c(0.5,0.5),dist="Cont")
+resnyconttheta=c(resnycont$alpha,resnycont$beta,resnycont$Sigma[lower.tri(resnycont$Sigma)],resnycont$nu)
+AIC4=-2*resnycont$lk+2*(2*p+p*(p-1)/2+2)
+BIC4=-2*resnycont$lk+(2*p+p*(p-1)/2+2)*log(n)
+HQ4=-2*resnycont$lk+2*(2*p+p*(p-1)/2+2)*log(log(n))
+bscont<-c(resnyconttheta,resnycont$lk,AIC4,BIC4,HQ4)
+errocont<-desviosgradnu(resnyconttheta,t,"Cont")
+bscont<-cbind(bscont,c(errocont,0,0,0,0))
+cbind(bste,bsnormal,bst,bsslash,bscont)
+
+xtable::xtable(cbind(bste,bsnormal,bst,bsslash,bscont),digits = 4)
+##########envelopes
+veroenvel<-function(t,alpha,beta,Sigma,nu){
+  
+  mm=dim(t)[1]
+  p=dim(t)[2]
+  
+  
+  epsilon=matrix(0,mm,p)
+  at=matrix(0,mm,p)
+  Atparte=matrix(0,mm,p)
+  vero1=matrix(0,mm,1)
+  
+  
+  
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+    Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+  }   
+  At=apply(Atparte,1,prod)
+  
+  lambda1=(-p+1)/2
+  lambda2=(-p-1)/2
+  a1=(2*pi)^(-p/2)*(nu^((p-1)/2)*besselK(nu^(-2),1/2))^(-1)
+  a2=(2*pi)^(-p/2)*(nu^((p+1)/2)*besselK(nu^(-2),-1/2))^(-1)
+  
+  for (d in 1:mm){
+    dt1=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+    qt=sqrt(nu^(-2)+dt1)
+    omega=nu^(-1)*qt	
+    f1=a1*qt^lambda1*besselK(omega,lambda1)
+    f2=a2*qt^lambda2*besselK(omega,lambda2)
+    funk=f1+f2
+    
+    vero1[d]=-0.5*log(det(Sigma))+log(At[d])+log(0.5*funk)
+    
+  }
+  
+  #vero=sum(vero1)
+  return(vero1)
+}
+veroheltonenvel<-function(t,alpha,beta,Sigma,nu,dist){
+  
+  mm=dim(t)[1]
+  p=dim(t)[2]
+  
+  eta=matrix(0,mm,p)
+  epsilon=matrix(0,mm,p)
+  at=matrix(0,mm,p)
+  Atparte=matrix(0,mm,p)
+  vero1=matrix(0,mm,1)
+  dt=matrix(0,mm,1)
+  funk=matrix(0,mm,1)
+  
+  
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+    Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+  }   
+  At=apply(Atparte,1,prod)
+  
+  
+  
+  
+  for (d in 1:mm){
+    dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))    
+    if (dist == "Normal"){#funk[d]=dnorm(sqrt(dt[d]))  
+      funk[d]=dmvnorm(t(at[d,]), mean = rep(0, p) , sigma =Sigma)} 
+    if (dist == "Student"){funk[d]=(pi^(-p/2)*nu^(nu/2)*gamma((nu+p)/2))/(gamma(nu/2)*(dt[d]+nu)^((nu+p)/2))}
+    if (dist == "Slash"){funk[d]=(2*pi)^(-p/2)*(  (nu*2^(nu+(p/2))*gamma( nu+(p/2) )  )/dt[d]^(nu+(p/2)) )*fp1(a=nu+(p/2),b=dt[d]/2)}
+    if (dist == "Cont"){nu1=nu[1]
+    gama=nu[2]
+    #funk[d]=(nu1*dnorm(sqrt(dt[d]),0,(1/sqrt(gama)))+(1-nu1)*dnorm(sqrt(dt[d])))
+    funk[d]=nu1*dmvnorm(t(at[d,]), mean = rep(0, p) , sigma =(gama^(-1))*Sigma)+(1-nu1)*dmvnorm(t(at[d,]), mean = rep(0, p) , sigma =Sigma)}
+    if(p>1){
+      vero1[d]=-0.5*log(det(Sigma))+log(At[d])+log(funk[d])
+      if ((dist == "Normal")|| (dist == "Cont")){
+        vero1[d]=log(At[d])+log(funk[d])
+      }
+      
+    }else{vero1[d]=log(At[d])+log(funk[d])}
+    
+  }
+  
+  
+  return(vero1)
+}
+
+
+envelopes<-function(t,alpha,beta,Sigma,nu,dist){
+  if(dist=="Bst"){
+    u=veroenvel(t,alpha,beta,Sigma,nu)
+  }
+  if(dist=="Normal"){
+    u=veroheltonenvel(t,alpha,beta,Sigma,nu,"Normal")
+  }
+  if(dist=="Student"){
+    u=veroheltonenvel(t,alpha,beta,Sigma,nu,"Student")
+  }
+  if(dist=="Slash"){
+    u=veroheltonenvel(t,alpha,beta,Sigma,nu,"Slash")
+  }
+  if(dist=="Cont"){
+    u=veroheltonenvel(t,alpha,beta,Sigma,nu,"Cont")
+  }
+  empiricau=ecdf(u)
+  plot(empiricau,u,xlab="Log density",ylab="ECDF",main="")
+  
+  n=dim(t)[1]
+  p=dim(t)[2]
+  
+  for(i in 1:500){
+    
+    
+    if(dist=="Bst"){
+      source("programas.txt")
+      tnovo=gera(n,p,alpha,beta,Sigma,nu)
+      v=veroenvel(tnovo,alpha,beta,Sigma,nu)
+    }
+    if(dist=="Normal"){
+      source("programas_renata_helton_david.txt")
+      tnovo=gerahelton(n,p,alpha,beta,Sigma,nu,"Normal")
+      v=veroheltonenvel(tnovo,alpha,beta,Sigma,nu,"Normal")
+    }
+    if(dist=="Student"){
+      source("programas_renata_helton_david.txt")
+      tnovo=gerahelton(n,p,alpha,beta,Sigma,nu,"Student")
+      v=veroheltonenvel(tnovo,alpha,beta,Sigma,nu,"Student")
+    }
+    if(dist=="Slash"){
+      source("programas_renata_helton_david.txt")
+      tnovo=gerahelton(n,p,alpha,beta,Sigma,nu,"Slash")
+      v=veroheltonenvel(tnovo,alpha,beta,Sigma,nu,"Slash")
+    }
+    if(dist=="Cont"){
+      source("programas_renata_helton_david.txt")
+      tnovo=gerahelton(n,p,alpha,beta,Sigma,nu,"Cont")
+      v=veroheltonenvel(tnovo,alpha,beta,Sigma,nu,"Cont")
+    }
+    empiricav=ecdf(v)
+    par(new=TRUE)
+    plot(empiricav,v,xlab="",ylab="",main="",col="lightgray",axes=F)
+    print(i)
+  }
+  par(new=TRUE)
+  plot(empiricau,u,xlab="",ylab="",main="",axes=F)
+  
+}
+####bst
+
+alpha= resny$alpha
+beta= resny$beta
+Sigma= resny$Sigma
+nu= resny$nu
+envelopes(t,alpha,beta,Sigma,nu,"Bst")
+####normal
+alpha= resnynormal$alpha
+beta= resnynormal$beta
+Sigma= resnynormal$Sigma
+nu= resnynormal$nu
+envelopes(t,alpha,beta,Sigma,nu,"Normal")
+####t
+alpha= resnyt$alpha
+beta= resnyt$beta
+Sigma= resnyt$Sigma
+nu= resnyt$nu
+envelopes(t,alpha,beta,Sigma,nu,"Student")
+####slash
+alpha= resnyslash$alpha
+beta= resnyslash$beta
+Sigma= resnyslash$Sigma
+nu= resnyslash$nu
+envelopes(t,alpha,beta,Sigma,nu,"Slash")
+####cont
+alpha= resnycont$alpha
+beta= resnycont$beta
+Sigma= resnycont$Sigma
+nu= resnycont$nu
+envelopes(t,alpha,beta,Sigma,nu,"Cont")
+
+
+########arregkando
+# Base plot
+plot(resny$dt, resny$u1, main = "", ylab = "Weights", xlab = "Mahalanobis distance", pch = 16)
+abline(a = 1, b = 0, lty = 3)
+
+# Default offset for most labels
+offsets <- rep(0.1, 174)
+
+# Plot all labels except 27
+for (i in 1:174) {
+  if (resny$dt[i] > 3.2 * mean(resny$dt, na.rm = TRUE)) {
+    if (i == 27) {
+      # Custom position for label 27 (example: move higher and to the left)
+      text(x = resny$dt[i] - 0.2, y = resny$u1[i] - 0.1, labels = i, col = "black", cex = 0.8)
+    } else {
+      # Default position for other labels
+      text(x = resny$dt[i], y = resny$u1[i] + offsets[i], labels = i, col = "black", cex = 0.8)
+    }
+  }
+}
+
+
+fechas <- seq(from = as.Date("1990-01-01"), by = "month", length.out = 174)
+fechas[18]
+fechas[107]
+fechas[104]
+fechas[27]
+fechas[14]
+
+########arregkando
+# Base plot
+plot(resny$dt, resny$u1, main = "", ylab = "Weights", xlab = "Mahalanobis distance", pch = 16)
+abline(a = 1, b = 0, lty = 3)
+
+# Default offset for most labels
+offsets <- rep(0.08, 174)
+
+# Plot all labels except 27
+for (i in 1:174) {
+  if (resnyt$dt[i] > 3.6 * mean(resny$dt, na.rm = TRUE)) {
+    if (i == 27 | i==18) {
+      # Custom position for label 27 (example: move higher and to the left)
+      text(x = resny$dt[i] - 0.05, y = resny$u1[i] - 0.08, labels = i, col = "black", cex = 1.4)
+    } else {
+      # Default position for other labels
+      text(x = resny$dt[i], y = resny$u1[i] + offsets[i], labels = i, col = "black", cex = 1.4)
+    }
+  }
+}
+
+#St
+# Base plot
+plot(resnyt$dt, resnyt$u, main = "", ylab = "Weights", xlab = "Mahalanobis distance", pch = 16)
+abline(a = 1, b = 0, lty = 3)
+
+# Default offset for most labels
+offsets <- rep(0.05, 174)
+
+# Plot all labels except 27
+for (i in 1:174) {
+  if (resnyt$dt[i] > 3.3 * mean(resnyt$dt, na.rm = TRUE)) {
+    if (i == 27 | i==18) {
+      # Custom position for label 27 (example: move higher and to the left)
+      text(x = resnyt$dt[i] - 0.02, y = resnyt$u[i] - 0.04, labels = i, col = "black", cex = 1.4)
+    } else {
+      # Default position for other labels
+      text(x = resnyt$dt[i], y = resnyt$u[i] + offsets[i], labels = i, col = "black", cex = 1.4)
+    }
+  }
+}
+###slash
+# Base plot
+plot(resnyslash$dt, resnyslash$u, main = "", ylab = "Weights", xlab = "Mahalanobis distance", pch = 16)
+abline(a = 1, b = 0, lty = 3)
+
+# Default offset for most labels
+offsets <- rep(0.05, 174)
+
+# Plot all labels except 27
+for (i in 1:174) {
+  if (resnyslash$dt[i] > 3.3 * mean(resnyslash$dt, na.rm = TRUE)) {
+    if (i == 27 | i==18) {
+      # Custom position for label 27 (example: move higher and to the left)
+      text(x = resnyslash$dt[i] - 0.02, y = resnyslash$u[i] - 0.04, labels = i, col = "black", cex = 1.4)
+    } else {
+      # Default position for other labels
+      text(x = resnyslash$dt[i], y = resnyslash$u[i] + offsets[i], labels = i, col = "black", cex = 1.4)
+    }
+  }
+}
+###cont
+# Base plot
+plot(resnycont$dt, resnycont$u, main = "", ylab = "Weights", xlab = "Mahalanobis distance", pch = 16,ylim=c(0.28,1))
+abline(a = 1, b = 0, lty = 3)
+
+# Default offset for most labels
+offsets <- rep(0.05, 174)
+
+# Plot all labels except 27
+for (i in 1:174) {
+  if (resnycont$dt[i] > 3.3 * mean(resnycont$dt, na.rm = TRUE)) {
+    if (i == 27 | i==18) {
+      # Custom position for label 27 (example: move higher and to the left)
+      text(x = resnycont$dt[i] - 0.02, y = resnycont$u[i] - 0.04, labels = i, col = "black", cex = 1.4)
+    } else {
+      # Default position for other labels
+      text(x = resnycont$dt[i], y = resnycont$u[i] + offsets[i], labels = i, col = "black", cex = 1.4)
+    }
+  }
+}
+
+
+
+
+
+
+
