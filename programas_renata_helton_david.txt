@@ -1,0 +1,971 @@
+ 
+
+##############################################################
+## Packages
+##############################################################
+
+library(numDeriv)
+require(mvtnorm)
+ 
+  
+##############################################################
+## log-likelihood
+##############################################################
+
+fp1<-function(a,b){
+  cdf<-pgamma(1, shape=a, scale = 1/b)
+  return(cdf)
+}
+
+verohelton<-function(t,alpha,beta,Sigma,nu,dist){
+  
+  mm=dim(t)[1]
+  p=dim(t)[2]
+  
+  eta=matrix(0,mm,p)
+  epsilon=matrix(0,mm,p)
+  at=matrix(0,mm,p)
+  Atparte=matrix(0,mm,p)
+  vero1=matrix(0,mm,1)
+  dt=matrix(0,mm,1)
+  funk=matrix(0,mm,1)
+  
+    
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+    Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+  }   
+  At=apply(Atparte,1,prod)
+
+
+
+  
+  for (d in 1:mm){
+    dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))    
+    if (dist == "Normal"){#funk[d]=dnorm(sqrt(dt[d]))  
+    funk[d]=dmvnorm(t(at[d,]), mean = rep(0, p) , sigma =Sigma)} 
+    if (dist == "Student"){funk[d]=(pi^(-p/2)*nu^(nu/2)*gamma((nu+p)/2))/(gamma(nu/2)*(dt[d]+nu)^((nu+p)/2))}
+    if (dist == "Slash"){funk[d]=(2*pi)^(-p/2)*(  (nu*2^(nu+(p/2))*gamma( nu+(p/2) )  )/dt[d]^(nu+(p/2)) )*fp1(a=nu+(p/2),b=dt[d]/2)}
+    if (dist == "Cont"){nu1=nu[1]
+    gama=nu[2]
+    #funk[d]=(nu1*dnorm(sqrt(dt[d]),0,(1/sqrt(gama)))+(1-nu1)*dnorm(sqrt(dt[d])))
+    funk[d]=nu1*dmvnorm(t(at[d,]), mean = rep(0, p) , sigma =(gama^(-1))*Sigma)+(1-nu1)*dmvnorm(t(at[d,]), mean = rep(0, p) , sigma =Sigma)}
+    if(p>1){
+vero1[d]=-0.5*log(det(Sigma))+log(At[d])+log(funk[d])
+if ((dist == "Normal")|| (dist == "Cont")){
+vero1[d]=log(At[d])+log(funk[d])
+}
+    
+    }else{vero1[d]=log(At[d])+log(funk[d])}
+    
+  }
+  
+  vero=sum(vero1)
+  return(vero)
+}
+
+veroheltonnucont<-function(nu,t,alpha,beta,Sigma){
+  
+  mm=dim(t)[1]
+  p=dim(t)[2]
+  
+  eta=matrix(0,mm,p)
+  epsilon=matrix(0,mm,p)
+  at=matrix(0,mm,p)
+  Atparte=matrix(0,mm,p)
+  vero1=matrix(0,mm,1)
+  dt=matrix(0,mm,1)
+  funk=matrix(0,mm,1)
+  
+    
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+    Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+  }   
+  At=apply(Atparte,1,prod)
+
+  for (d in 1:mm){
+    #dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))   
+   
+    nu1=nu[1]
+    gama=nu[2]    
+    #funk[d]=(nu1*dnorm(sqrt(dt[d]),0,(1/sqrt(gama)))+(1-nu1)*dnorm(sqrt(dt[d])))
+    funk[d]=nu1*dmvnorm(t(at[d,]), mean = rep(0, p) , sigma =(gama^(-1))*Sigma)+(1-nu1)*dmvnorm(t(at[d,]), mean = rep(0, p) , sigma =Sigma)
+    if(p>1){
+    vero1[d]=log(At[d])+log(funk[d])
+
+    
+    }else{vero1[d]=log(At[d])+log(funk[d])}
+    
+  }
+  
+  vero=sum(vero1)
+  return(vero)
+}
+
+
+veroheltonnusla<-function(nu,t,alpha,beta,Sigma){
+  
+  mm=dim(t)[1]
+  p=dim(t)[2]
+  
+  eta=matrix(0,mm,p)
+  epsilon=matrix(0,mm,p)
+  at=matrix(0,mm,p)
+  Atparte=matrix(0,mm,p)
+  vero1=matrix(0,mm,1)
+  dt=matrix(0,mm,1)
+  funk=matrix(0,mm,1)
+  
+    
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+    Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+  }   
+  At=apply(Atparte,1,prod)
+  
+  for (d in 1:mm){
+    dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))  
+    
+
+    funk[d]=(2*pi)^(-p/2)*(  (nu*2^(nu+(p/2))*gamma( nu+(p/2) )  )/dt[d]^(nu+(p/2)) )*fp1(a=nu+(p/2),b=dt[d]/2)    
+    if(p>1){
+     vero1[d]=-0.5*log(det(Sigma))+log(At[d])+log(funk[d])
+    }else{vero1[d]=log(At[d])+log(funk[d])}
+  }
+  
+  vero=sum(vero1)
+  return(vero)
+}
+
+
+veroheltonnut<-function(nu,t,alpha,beta,Sigma){
+  
+  mm=dim(t)[1]
+  p=dim(t)[2]
+  
+  eta=matrix(0,mm,p)
+  epsilon=matrix(0,mm,p)
+  at=matrix(0,mm,p)
+  Atparte=matrix(0,mm,p)
+  vero1=matrix(0,mm,1)
+  dt=matrix(0,mm,1)
+  funk=matrix(0,mm,1)
+  
+    
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+    Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+  }   
+  At=apply(Atparte,1,prod)
+  
+  for (d in 1:mm){
+    dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))    
+    
+   funk[d]=(pi^(-p/2)*nu^(nu/2)*gamma((nu+p)/2))/(gamma(nu/2)*(dt[d]+nu)^((nu+p)/2))
+   
+    if(p>1){
+    vero1[d]=-0.5*log(det(Sigma))+log(At[d])+log(funk[d])
+    }else{vero1[d]=log(At[d])+log(funk[d])}
+    
+  }
+  
+  vero=sum(vero1)
+  return(vero)
+}
+
+
+##############################################################
+## Generalized multivariate BirnbaumSaunders distributions 
+## and related inferential issues (2013): section 4.1.2
+##############################################################
+
+
+chuteini <-function(t){
+  
+  n=dim(t)[1]
+  p=dim(t)[2]
+  
+  epsilon=matrix(0,n,p)
+  at=matrix(0,n,p)
+  
+  s=apply(t,2,mean)
+  r=1/apply(1/t,2,mean)
+  
+  alpha=matrix(sqrt(2*(sqrt(s/r)-1)),p,1)
+  
+   beta=matrix(sqrt(s*r),p,1)   
+  
+  
+  
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+  }
+  
+  
+  D=matrix(1,p,p)
+  if (p!=1){
+    
+    D=matrix(1,p,p)
+    
+    for (hh in 1:(p-1)){
+      for (jj in (hh+1):p ){
+        
+        D[hh,jj]= sum(epsilon[,hh]*epsilon[,jj])/(sqrt((sum(epsilon[,hh]^2))*(sum( epsilon[,jj]^2))))
+        D[jj,hh]=D[hh,jj]
+        
+      }
+    }
+  }
+  
+  if (p==1){D=1}
+  
+  result = list(alpha = alpha, beta=beta, D=D)
+  return(result)
+}
+
+
+
+##############################################################
+## EM geral
+##############################################################
+
+fp1 <- function(a,b){
+  cdf<-pgamma(1, shape=a, scale = 1/b)
+  return(cdf)
+}
+
+Qbeta <- function(beta,t,alpha,Sigma,u){
+  n=dim(t)[1]
+  p=dim(t)[2]
+  
+  eta=matrix(0,n,p)
+  epsilon=matrix(c(0),n,p)
+  at=matrix(c(0),n,p)
+  
+    
+    
+  for (j in 1:p){
+    eta[,j]=beta[j]
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+  }
+  
+  auxQbeta=matrix(0,n,1)
+  dt=matrix(0,n,1)
+  for (d in 1:n){
+    dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+    auxQbeta[d]=u[d]*dt[d]
+  }
+  if(p>1){
+  Q=-n*log(apply(alpha,2,prod))-0.5*sum(log(apply(eta,1,prod)))-(n/2)*log(det(Sigma))+sum(apply(log(t+eta),1,sum))-0.5*sum(auxQbeta)
+  }else{Q=-n*log(apply(alpha,2,prod))-0.5*sum(log(apply(eta,1,prod)))+sum(apply(log(t+eta),1,sum))-0.5*sum(auxQbeta)}
+  return(Q)
+}
+
+
+emhelton <- function(t,error,lb,lu,nu,dist){
+  
+  # t: dados multivariados t=(t1,t2,t3,..., tp): n por p
+  # alpha=(alpha1,alpha2, alpha3,..., alphap) p por 1
+  # beta=(beta1,beta2,beta3,...,betap) p por 1
+  # Sigma: matriz p por p
+  # error: precisão das estimativas
+  # lb e lu: valores iniciais para a maximização de beta
+  
+  chute <- chuteini(t)
+  alpha<-chute$alpha
+  beta=chute$beta
+  Sigma=chute$D
+  
+  
+  n=dim(t)[1]
+  p=dim(t)[2]
+  
+  
+  criterio <- 1
+  cont=0
+  lkante <- 1
+  
+  while (criterio > error){
+    
+    cont=cont+1
+    epsilon=matrix(c(0),n,p)
+    at=matrix(c(0),n,p)
+    dt=matrix(0,n,1)
+    u=matrix(0,n,1)
+    
+    
+    
+    for (j in 1:p){
+      epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+      at[,j]=epsilon[,j]/alpha[j]
+    }
+    
+    for (d in 1:n){
+      dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+      
+      #ETAPA E
+      
+      if (dist == "Normal"){u[d]=1}
+      
+      if (dist == "Student"){u[d]=(nu+p)/(nu+dt[d])}
+      
+      if (dist == "Slash"){u[d]=(((2*nu)+p)/dt[d])*(fp1(p/2+nu+1,dt[d]/2)/fp1(p/2+nu,dt[d]/2))}
+      
+      if (dist == "Cont"){nu1=nu[1]
+      gama=nu[2]
+      u[d]<-(1-nu1+nu1*(gama^((p+2)/2))*exp((1-gama)*dt[d]/2))/(1-nu1+nu1*(gama^(p/2))*exp((1-gama)*dt[d]/2))
+      }
+      
+    }
+    
+    #ETAPA M 
+    
+    
+    for (j in 1:p){
+      alpha[j]=sqrt(mean(u*(t[,j]/beta[j]))+mean(u*(beta[j]/t[,j]))-2*mean(u))
+    }
+    
+    
+    beta.old=c(beta)
+    beta <- optim(beta.old, Qbeta, gr=NULL, t,alpha,Sigma,u, control = list(fnscale = -1), method = "L-BFGS-B", lower = lb, upper = lu)$par
+   # beta <- optim(beta.old, Qbeta, gr=NULL, t,x,alpha,Sigma,u, control = list(fnscale = -1), method = "BFGS")$par
+    
+    Sigma=matrix(0,p,p)
+    
+    for (j in 1:p){
+      for (k in 1:p){
+        Sigma[j,k]= sum(u*epsilon[,j]*epsilon[,k])/(sqrt(sum(u*epsilon[,j]^2))*sqrt(sum(u*epsilon[,k]^2)))
+      }
+    }
+    
+    
+    lk=verohelton(t,alpha,beta,Sigma,nu,dist)
+    criterio <- abs((lk/lkante)-1)
+    lkante <- lk
+    
+  } 
+  
+  object.out = list(alpha = alpha, beta=beta, Sigma=Sigma,lk=lk,u=u,nu=nu)
+  return(object.out)
+}
+
+
+emheltonnu <- function(t,error,lb,lu,nu,dist){
+  
+  # t: dados multivariados t=(t1,t2,t3,..., tp): n por p
+  # alpha=(alpha1,alpha2, alpha3,..., alphap) p por 1
+  # beta=(beta1,beta2,beta3,...,betap) p por 1
+  # Sigma: matriz p por p
+  # error: precisão das estimativas
+  # lb e lu: valores iniciais para a maximização de beta
+  
+  chute <- chuteini(t)
+  alpha<-chute$alpha
+  beta=chute$beta
+  Sigma=chute$D
+  
+  
+  n=dim(t)[1]
+  p=dim(t)[2]
+  
+  
+  criterio <- 1
+  cont=0
+  lkante <- 1
+  
+  while (criterio > error){
+    
+    cont=cont+1
+    epsilon=matrix(c(0),n,p)
+    at=matrix(c(0),n,p)
+    dt=matrix(0,n,1)
+    u=matrix(0,n,1)
+    
+    
+    
+    for (j in 1:p){
+      epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+      at[,j]=epsilon[,j]/alpha[j]
+    }
+    
+    for (d in 1:n){
+      dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+      
+      #ETAPA E
+      
+      if (dist == "Normal"){u[d]=1}
+      
+      if (dist == "Student"){u[d]=(nu+p)/(nu+dt[d])}
+      
+      if (dist == "Slash"){u[d]=(((2*nu)+p)/dt[d])*(fp1(p/2+nu+1,dt[d]/2)/fp1(p/2+nu,dt[d]/2))}
+      
+      if (dist == "Cont"){nu1=nu[1]
+      gama=nu[2]
+      u[d]<-(1-nu1+nu1*(gama^((p+2)/2))*exp((1-gama)*dt[d]/2))/(1-nu1+nu1*(gama^(p/2))*exp((1-gama)*dt[d]/2))
+      }
+      
+    }
+    
+    #ETAPA M 
+    
+    
+    for (j in 1:p){
+      alpha[j]=sqrt(mean(u*(t[,j]/beta[j]))+mean(u*(beta[j]/t[,j]))-2*mean(u))
+    }
+    
+    
+    beta.old=c(beta)
+    beta <- optim(beta.old, Qbeta, gr=NULL, t,alpha,Sigma,u, control = list(fnscale = -1), method = "L-BFGS-B", lower = lb, upper = lu)$par
+   # beta <- optim(beta.old, Qbeta, gr=NULL, t,x,alpha,Sigma,u, control = list(fnscale = -1), method = "BFGS")$par
+    
+    Sigma=matrix(0,p,p)
+    
+    for (j in 1:p){
+      for (k in 1:p){
+        Sigma[j,k]= sum(u*epsilon[,j]*epsilon[,k])/(sqrt(sum(u*epsilon[,j]^2))*sqrt(sum(u*epsilon[,k]^2)))
+      }
+    }
+
+nu.old=nu
+
+
+if (dist == "Student"){
+nu <- optim(nu.old, veroheltonnut,t,alpha,beta,Sigma, gr=NULL, control = list(fnscale = -1), method = "L-BFGS-B", lower = 0.1, upper = 100)$par}
+
+if (dist == "Slash"){
+nu <- optim(nu.old, veroheltonnusla,t,alpha,beta,Sigma, gr=NULL, control = list(fnscale = -1), method = "L-BFGS-B", lower =0.1, upper = 100)$par}
+
+if (dist == "Cont"){
+  nu <- optim(nu.old, veroheltonnucont,t,alpha,beta,Sigma, gr=NULL, control = list(fnscale = -1), method = "L-BFGS-B", lower = c(0.1,0.1), upper = c(1,1))$par
+}
+
+print(nu)    
+    
+    lk=verohelton(t,alpha,beta,Sigma,nu,dist)
+    criterio <- abs((lk/lkante)-1)
+    lkante <- lk
+    
+  } 
+  
+  object.out = list(alpha = alpha, beta=beta, Sigma=Sigma,lk=lk,u=u,nu=nu,dt=dt)
+  return(object.out)
+}
+
+
+
+##############################################################
+## Desvios
+##############################################################
+
+
+veronormal <- function(theta,t){
+  
+  
+  
+  mm=dim(t)[1]
+  p=dim(t)[2]
+  
+  alpha=matrix(theta[1:p],p,1)
+  beta=matrix(theta[(p+1):(p+(p))],p,1)
+  #alterar a dimensão do Sigma conforme os dados
+  #Sigma=matrix(c(1,theta[(p+(p))+1],theta[(p+(p))+2],theta[(p+(p))+1],1,theta[(p+(p))+3],theta[(p+(p))+2], theta[(p+(p))+3],1),p,p)
+  
+  Sigma <- diag(1,p,p)
+  Sigma[lower.tri(Sigma, diag=FALSE)] <- c(theta[ ((p+(p))+1):length(theta) ])
+  Sigma <- as.matrix(Matrix::forceSymmetric(Sigma,uplo="L"))
+  
+  
+  epsilon=matrix(0,mm,p)
+  at=matrix(0,mm,p)
+  Atparte=matrix(0,mm,p)
+  vero1=matrix(0,mm,1)
+  dt=matrix(0,mm,1)
+  funk=matrix(0,mm,1)
+  
+  
+ 
+  
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/as.numeric(beta[j]))-sqrt(as.numeric(beta[j])/t[,j])
+    at[,j]=epsilon[,j]/as.numeric(alpha[j])
+    Atparte[,j]= (t[,j]+as.numeric(beta[j]))/(2*as.numeric(alpha[j])*sqrt(as.numeric(beta[j]))*sqrt(t[,j]^3))
+  }   
+  At=apply(Atparte,1,prod)
+
+  
+  for (d in 1:mm){
+    #dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+    funk[d]=dmvnorm(t(at[d,]), mean = rep(0, p) , sigma =Sigma)
+    if(p>1){
+    vero1[d]=log(At[d])+log(funk[d])
+    }else{vero1[d]=log(At[d])+log(funk[d])}
+  }
+  
+  vero=sum(vero1)
+  return(vero)
+}
+
+
+verot <- function(theta,t,nu){
+  
+  
+  
+  mm=dim(t)[1]
+  p=dim(t)[2]
+  
+  alpha=matrix(theta[1:p],p,1)
+  beta=matrix(theta[(p+1):(p+(p))],p,1)
+  Sigma <- diag(1,p,p)
+  Sigma[lower.tri(Sigma, diag=FALSE)] <- c(theta[ ((p+(p))+1):length(theta) ])
+  Sigma <- as.matrix(Matrix::forceSymmetric(Sigma,uplo="L"))
+  
+ ##Sigma[lower.tri(Sigma, diag=FALSE)] <- c(theta[ ((p+(p*px))+1):length(theta) ])
+ ## Sigma=matrix(c(1,theta[(p+(p*px))+1],theta[(p+(p*px))+2],theta[(p+(p*px))+1],1,theta[(p+(p*px))+3],theta[(p+(p*px))+2], theta[(p+(p*px))+3],1),p,p)
+  
+  
+  epsilon=matrix(0,mm,p)
+  at=matrix(0,mm,p)
+  Atparte=matrix(0,mm,p)
+  vero1=matrix(0,mm,1)
+  dt=matrix(0,mm,1)
+  funk=matrix(0,mm,1)
+  
+  
+  
+  
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+    Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+  }   
+  At=apply(Atparte,1,prod)
+  
+  for (d in 1:mm){
+    dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+    funk[d]=(pi^(-p/2)*nu^(nu/2)*gamma((nu+p)/2))/(gamma(nu/2)*(dt[d]+nu)^((nu+p)/2))
+    if(p>1){
+    vero1[d]=-0.5*log(det(Sigma))+log(At[d])+log(funk[d])
+    }else{vero1[d]=log(At[d])+log(funk[d])}
+  }
+  vero=sum(vero1)
+  return(vero)
+}
+
+
+verotnu <- function(theta,t){
+  
+  
+  
+  mm=dim(t)[1]
+  p=dim(t)[2]
+  
+  alpha=matrix(theta[1:p],p,1)
+  beta=matrix(theta[(p+1):(p+(p))],p,1)
+  Sigma <- diag(1,p,p)
+  Sigma[lower.tri(Sigma, diag=FALSE)] <- c(theta[ ((p+(p))+1):(length(theta)-1) ])
+  Sigma <- as.matrix(Matrix::forceSymmetric(Sigma,uplo="L"))
+ nu=theta[(length(theta))]
+  
+ ##Sigma[lower.tri(Sigma, diag=FALSE)] <- c(theta[ ((p+(p*px))+1):length(theta) ])
+ ## Sigma=matrix(c(1,theta[(p+(p*px))+1],theta[(p+(p*px))+2],theta[(p+(p*px))+1],1,theta[(p+(p*px))+3],theta[(p+(p*px))+2], theta[(p+(p*px))+3],1),p,p)
+  
+  
+  epsilon=matrix(0,mm,p)
+  at=matrix(0,mm,p)
+  Atparte=matrix(0,mm,p)
+  vero1=matrix(0,mm,1)
+  dt=matrix(0,mm,1)
+  funk=matrix(0,mm,1)
+  
+  
+  
+  
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+    Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+  }   
+  At=apply(Atparte,1,prod)
+  
+  for (d in 1:mm){
+    dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+   
+ funk[d]=(pi^(-p/2)*nu^(nu/2)*gamma((nu+p)/2))/(gamma(nu/2)*(dt[d]+nu)^((nu+p)/2))  
+   if(p>1){
+    vero1[d]=-0.5*log(det(Sigma))+log(At[d])+log(funk[d])
+    }else{vero1[d]=log(At[d])+log(funk[d])}
+  }
+  
+  vero=sum(vero1)
+  return(vero)
+}
+
+
+verosla <- function(theta,t,nu){
+  
+  
+  mm=dim(t)[1]
+  p=dim(t)[2]
+  
+  alpha=matrix(theta[1:p],p,1)
+  beta=matrix(theta[(p+1):(p+(p))],p,1)
+  #alterar a dimensão do Sigma conforme os dados
+  #Sigma=matrix(c(1,theta[(p+(p))+1],theta[(p+(p))+2],theta[(p+(p))+1],1,theta[(p+(p))+3],theta[(p+(p))+2], theta[(p+(p))+3],1),p,p)
+
+  Sigma <- diag(1,p,p)
+  Sigma[lower.tri(Sigma, diag=FALSE)] <- c(theta[ ((p+(p))+1):length(theta) ])
+  Sigma <- as.matrix(Matrix::forceSymmetric(Sigma,uplo="L"))
+  
+ 
+  epsilon=matrix(0,mm,p)
+  at=matrix(0,mm,p)
+  Atparte=matrix(0,mm,p)
+  vero1=matrix(0,mm,1)
+  dt=matrix(0,mm,1)
+  funk=matrix(0,mm,1)
+  
+  
+  
+  
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+    Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+  }   
+  At=apply(Atparte,1,prod)
+  
+  for (d in 1:mm){
+    dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+   funk[d]=(2*pi)^(-p/2)*(  (nu*2^(nu+(p/2))*gamma( nu+(p/2) )  )/dt[d]^(nu+(p/2)) )*fp1(a=nu+(p/2),b=dt[d]/2)
+    if(p>1){
+    vero1[d]=-0.5*log(det(Sigma))+log(At[d])+log(funk[d])
+    }else{vero1[d]=log(At[d])+log(funk[d])}
+  }
+  
+  vero=sum(vero1)
+  return(vero)
+}
+
+
+veroslanu <- function(theta,t){
+  
+  
+  mm=dim(t)[1]
+  p=dim(t)[2]
+  
+  alpha=matrix(theta[1:p],p,1)
+  beta=matrix(theta[(p+1):(p+(p))],p,1)
+  #alterar a dimensão do Sigma conforme os dados
+  #Sigma=matrix(c(1,theta[(p+(p))+1],theta[(p+(p))+2],theta[(p+(p))+1],1,theta[(p+(p))+3],theta[(p+(p))+2], theta[(p+(p))+3],1),p,p)
+  Sigma <- diag(1,p,p)
+  Sigma[lower.tri(Sigma, diag=FALSE)] <- c(theta[ ((p+(p))+1):(length(theta)-1) ])
+  Sigma <- as.matrix(Matrix::forceSymmetric(Sigma,uplo="L"))
+  nu=theta[(length(theta))]
+ 
+  epsilon=matrix(0,mm,p)
+  at=matrix(0,mm,p)
+  Atparte=matrix(0,mm,p)
+  vero1=matrix(0,mm,1)
+  dt=matrix(0,mm,1)
+  funk=matrix(0,mm,1)
+  
+  
+  
+  
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+    Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+  }   
+  At=apply(Atparte,1,prod)
+  
+  for (d in 1:mm){
+    dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+    funk[d]=(2*pi)^(-p/2)*(  (nu*2^(nu+(p/2))*gamma( nu+(p/2) )  )/dt[d]^(nu+(p/2)) )*fp1(a=nu+(p/2),b=dt[d]/2)
+   if(p>1){
+    vero1[d]=-0.5*log(det(Sigma))+log(At[d])+log(funk[d])
+    }else{vero1[d]=log(At[d])+log(funk[d])}
+  }
+  
+  vero=sum(vero1)
+  return(vero)
+}
+
+
+verocont<-function(theta,t,nu){
+
+ 
+  
+  mm=dim(t)[1]
+  p=dim(t)[2]
+  
+  alpha=matrix(theta[1:p],p,1)
+  beta=matrix(theta[(p+1):(2*p)],p,1)
+  #alterar a dimensão do Sigma conforme os dados
+  #Sigma=matrix(c(1,theta[(p+(p))+1],theta[(p+(p))+2],theta[(p+(p))+1],1,theta[(p+(p))+3],theta[(p+(p))+2], theta[(p+(p))+3],1),p,p)
+  
+  Sigma <- diag(1,p,p)
+  Sigma[lower.tri(Sigma, diag=FALSE)] <- c(theta[ ((p+(p))+1):length(theta) ])
+  Sigma <- as.matrix(Matrix::forceSymmetric(Sigma,uplo="L"))
+  
+  nu1=nu[1]
+  gama=nu[2]
+  
+  
+  epsilon=matrix(0,mm,p)
+  at=matrix(0,mm,p)
+  Atparte=matrix(0,mm,p)
+  vero1=matrix(0,mm,1)
+  dt=matrix(0,mm,1)
+  funk=matrix(0,mm,1) 
+ 
+ 
+  
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+    Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+  }   
+  At=apply(Atparte,1,prod)
+
+  
+  for (d in 1:mm){
+    #dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+     #funk[d]=(nu1*dnorm(sqrt(dt[d]),0,1/sqrt(gama))+(1-nu1)*dnorm(sqrt(dt[d])))
+funk[d]=nu1*dmvnorm(t(at[d,]), mean = rep(0, p) , sigma =(gama^(-1))*Sigma)+(1-nu1)*dmvnorm(t(at[d,]), mean = rep(0, p) , sigma =Sigma)
+    if(p>1){
+    vero1[d]=log(At[d])+log(funk[d])
+    }else{vero1[d]=log(At[d])+log(funk[d])}
+  }
+  
+  vero=sum(vero1)
+  return(vero)
+}
+
+
+verocontnu<-function(theta,t,nu){
+
+ 
+  
+  mm=dim(t)[1]
+  p=dim(t)[2]
+  
+  alpha=matrix(theta[1:p],p,1)
+  beta=matrix(theta[(p+1):(2*p)],p,1)
+  #alterar a dimensão do Sigma conforme os dados
+  #Sigma=matrix(c(1,theta[(p+(p))+1],theta[(p+(p))+2],theta[(p+(p))+1],1,theta[(p+(p))+3],theta[(p+(p))+2], theta[(p+(p))+3],1),p,p)
+  
+  Sigma <- diag(1,p,p)
+  Sigma[lower.tri(Sigma, diag=FALSE)] <- c(theta[ ((p+(p))+1):(length(theta)-2) ])
+  Sigma <- as.matrix(Matrix::forceSymmetric(Sigma,uplo="L"))
+  gama=theta[(length(theta))]  
+  nu1=theta[(length(theta)-1)]  
+ 
+  
+  
+  epsilon=matrix(0,mm,p)
+  at=matrix(0,mm,p)
+  Atparte=matrix(0,mm,p)
+  vero1=matrix(0,mm,1)
+  dt=matrix(0,mm,1)
+  funk=matrix(0,mm,1) 
+ 
+ 
+  
+  for (j in 1:p) {
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+    Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+  }   
+  At=apply(Atparte,1,prod)
+
+  
+  for (d in 1:mm){
+    #dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+     #funk[d]=(nu1*dnorm(sqrt(dt[d]),0,1/sqrt(gama))+(1-nu1)*dnorm(sqrt(dt[d])))
+funk[d]=nu1*dmvnorm(t(at[d,]), mean = rep(0, p) , sigma =(gama^(-1))*Sigma)+(1-nu1)*dmvnorm(t(at[d,]), mean = rep(0, p) , sigma =Sigma)
+    if(p>1){
+    vero1[d]=log(At[d])+log(funk[d])
+    }else{vero1[d]=log(At[d])+log(funk[d])}
+  }
+  
+  vero=sum(vero1)
+  return(vero)
+}
+
+
+desviosgrad<-function(theta,dados,nuaux,dist){
+  
+  ### Erros-padrão utilizando a função grad()
+  
+  n=dim(dados)[1]
+  p=dim(dados)[2]
+  
+  
+ 
+  
+  
+  i <- 1
+  while(i < (n+1)){
+    
+  
+     
+
+      
+    
+    if (dist == "Normal"){
+      mat1 <- grad(veronormal, theta, method="Richardson",t=matrix(dados[i,],1,p))}
+    
+    if (dist == "Student"){
+      mat1 <- grad(verot, theta, method="Richardson",t=matrix(dados[i,],1,p),nu=nuaux)}
+    
+    if (dist == "Slash"){
+      mat1 <- grad(verosla, theta, method="Richardson",t=matrix(dados[i,],1,p),nu=nuaux)}
+    
+    if (dist == "Cont"){
+      mat1 <- grad(verocont, theta, method="Richardson",t=matrix(dados[i,],1,p),nu=nuaux)}
+    
+    mat <- mat1%*%t(mat1)
+    
+    if(i == 1){
+      X <- mat
+    }else{
+      X <- X + mat
+    }
+    
+    i <- i + 1
+  }
+  
+  errosGrad2 <- round(sqrt(diag(solve(X))), 6)
+  return(errosGrad2)
+}
+
+
+desviosgradnu<-function(theta,dados,dist){
+  
+  ### Erros-padrão utilizando a função grad()
+  
+  n=dim(dados)[1]
+  p=dim(dados)[2]
+  
+  
+ 
+  
+  
+  i <- 1
+  while(i < (n+1)){
+    
+  
+     
+
+      
+    
+    if (dist == "Normal"){
+      mat1 <- grad(veronormal, theta, method="Richardson",t=matrix(dados[i,],1,p))}
+    
+    if (dist == "Student"){
+      mat1 <- grad(verotnu, theta, method="Richardson",t=matrix(dados[i,],1,p))}
+    
+    if (dist == "Slash"){
+      mat1 <- grad(veroslanu, theta, method="Richardson",t=matrix(dados[i,],1,p))}
+    
+    if (dist == "Cont"){
+      mat1 <- grad(verocontnu, theta, method="Richardson",t=matrix(dados[i,],1,p))}
+    
+    mat <- mat1%*%t(mat1)
+    
+    if(i == 1){
+      X <- mat
+    }else{
+      X <- X + mat
+    }
+    
+    i <- i + 1
+  }
+  
+  errosGrad2 <- round(sqrt(diag(solve(X))), 6)
+  return(errosGrad2)
+}
+
+##############################################################
+## Mahalanobis
+##############################################################
+
+
+maha <- function(t,beta,alpha,Sigma){
+  
+  n=dim(t)[1]
+  p=dim(t)[2]
+  
+  
+  
+  epsilon=matrix(c(0),n,p)
+  at=matrix(c(0),n,p)
+  dt=matrix(0,n,1)
+  
+  
+  n=dim(t)[1]
+  p=dim(t)[2]
+  
+  
+  epsilon=matrix(c(0),n,p)
+  at=matrix(c(0),n,p)
+  
+  
+  
+    
+  for (j in 1:p){
+    epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+    at[,j]=epsilon[,j]/alpha[j]
+  }
+  h
+  for (d in 1:n){
+    dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+  }
+  
+  return(as.vector(dt))
+  
+}
+
+desviosgradnu <- function(theta, dados, dist){
+  n <- nrow(dados)
+  p <- ncol(dados)
+
+  expected_theta_length <- switch(
+    dist,
+    "Normal" = 2*p + p*(p-1)/2,
+    "Student" = 2*p + p*(p-1)/2 + 1,
+    "Slash"   = 2*p + p*(p-1)/2 + 1,
+    "Cont"    = 2*p + p*(p-1)/2 + 2,
+    stop("Numero de parametros excede")
+  )
+
+  if(length(theta) != expected_theta_length){
+    stop(paste("Esperava-se um theta de tamanho", expected_theta_length, "mas recebeu", length(theta)))
+  }
+
+  X <- matrix(0, length(theta), length(theta))
+  for(i in 1:n){
+    obs <- matrix(dados[i,], 1, p)
+    grad_i <- switch(
+      dist,
+      "Normal"  = grad(veronormal, theta, method="Richardson", t=obs),
+      "Student" = grad(verotnu, theta, method="Richardson", t=obs),
+      "Slash"   = grad(veroslanu, theta, method="Richardson", t=obs),
+      "Cont"    = grad(verocontnu, theta, method="Richardson", t=obs)
+    )
+    X <- X + grad_i %*% t(grad_i)
+  }
+
+  errosGrad2 <- round(sqrt(diag(solve(X))), 6)
+  return(errosGrad2)
+}
+
+

@@ -1,0 +1,152 @@
+rMN <-
+function(n,mu,Sigma){
+  if(is.null(n))
+    stop("sample size must be specified")
+  if(is.null(mu))
+    stop("mu must be specified")
+  if(is.null(Sigma))
+    stop("Sigma must be specified")
+      if(is.vector(Sigma)) Sigma=matrix(Sigma)
+  if(round(n)!=n | n<=0)
+    stop("sample size must be a positive integer")      
+  if(!is.matrix(mu)) mu<-matrix(mu, ncol=length(mu),nrow=1)
+  if (!isSymmetric(Sigma))
+        stop("Sigma is not symmetric")
+  if (min(eigen(Sigma)$values)<=0)
+        stop("Sigma is not a positive-definite matrix")
+  if (ncol(Sigma) != ncol(mu))
+        stop("The dimension of mu does not agree with the dimension of Sigma")
+  p<-ncol(Sigma)
+  y<-matrix(0,n,p)
+  for(i in 1:n){
+      y[i,]=as.vector(mu)+MASS::mvrnorm(1,rep(0,p),Sigma)
+  } 
+  return(y) 
+}
+
+rMSL <-
+function(n, mu,Sigma, nu=1){
+   if(is.null(n))
+    stop("sample size must be specified")
+  if(is.null(mu))
+    stop("mu must be specified")
+  if(is.null(Sigma))
+    stop("Sigma must be specified")
+    if(is.vector(Sigma)) Sigma=matrix(Sigma)
+  if(round(n)!=n | n<=0)
+    stop("sample size must be a positive integer")      
+
+  if(!is.matrix(mu)) mu<-matrix(mu, ncol=length(mu),nrow=1)
+  if (!isSymmetric(Sigma))
+        stop("Sigma is not symmetric")
+  if (min(eigen(Sigma)$values)<=0)
+        stop("Sigma is not a positive-definite matrix")
+  if (ncol(Sigma) != ncol(mu))
+        stop("The dimension of mu does not agree with the dimension of Sigma")
+  if(nu<=0)
+        stop("nu must be positive")
+  p<-ncol(Sigma)
+  y<-matrix(0,n,p)
+ for(i in 1:n){
+           u<-rbeta(1,nu,1)
+      y[i,]=as.vector(mu)+MASS::mvrnorm(1,rep(0,p),Sigma/u)
+  } 
+    return(y)
+  }
+
+rMT <-
+function(n, mu,Sigma, nu=1){
+  if(is.null(n))
+    stop("sample size must be specified")
+  if(is.null(mu))
+    stop("mu must be specified")
+  if(is.null(Sigma))
+    stop("Sigma must be specified")
+    if(is.vector(Sigma)) Sigma=matrix(Sigma)  
+  if(round(n)!=n | n<=0)
+    stop("sample size must be a positive integer")      
+  if(!is.matrix(mu)) mu<-matrix(mu, ncol=length(mu),nrow=1)
+  if (!isSymmetric(Sigma))
+        stop("Sigma is not symmetric")
+  if (min(eigen(Sigma)$values)<=0)
+        stop("Sigma is not a positive-definite matrix")
+  if (ncol(Sigma) != ncol(mu))
+        stop("The dimension of mu does not agree with the dimension of Sigma")
+  if(nu<0)
+        stop("nu must be positive")
+  p<-ncol(Sigma)
+  y<-matrix(0,n,p)
+  for(i in 1:n){
+      u=rgamma(1,nu/2,nu/2)
+      y[i,]=as.vector(mu)+MASS::mvrnorm(1,rep(0,p),Sigma/u)
+  } 
+  return(y) 
+}
+
+
+rMCN <-
+function(n, mu,Sigma, nu=0.5, gamma=0.5){
+   if(is.null(n))
+    stop("sample size must be specified")
+  if(is.null(mu))
+    stop("mu must be specified")
+  if(is.null(Sigma))
+    stop("Sigma must be specified")
+    if(is.vector(Sigma)) Sigma=matrix(Sigma)
+  if(round(n)!=n | n<=0)
+    stop("sample size must be a positive integer")      
+  if(!is.matrix(mu)) mu<-matrix(mu, ncol=length(mu),nrow=1)
+  if (!isSymmetric(Sigma))
+        stop("Sigma is not symmetric")
+  if (min(eigen(Sigma)$values)<=0)
+        stop("Sigma is not a positive-definite matrix")
+  if (ncol(Sigma) != ncol(mu))
+        stop("The dimension of mu does not agree with the dimension of Sigma")
+  if (nu<0 | nu>1)
+        stop("nu must be between 0 and 1")
+  if (gamma<0 | gamma>1)
+        stop("gamma must be between 0 and 1")
+  p<-ncol(Sigma)
+y<-matrix(0,n,p)
+ for(i in 1:n){
+        uu<-rbinom(1,1,nu)
+        u<-gamma*uu+1-uu
+      y[i,]=as.vector(mu)+MASS::mvrnorm(1,rep(0,p),Sigma/u)
+  } 
+    return(y)
+  }
+
+
+ 
+matrix.sqrt <- function(A) {
+  sva <- svd(A)
+  if (min(sva$d)>=0)
+    Asqrt <- t(sva$v %*% (t(sva$u) * sqrt(sva$d)))
+  else
+    stop("Matrix square root is not defined")
+  return(Asqrt)
+}
+
+
+gerahelton<-function(n,p,alpha,beta,Sigma,nu, dist){
+
+t=matrix(0,n,p)
+
+if (dist == "Normal"){z<- rMN(n,mu=matrix(0,1,p),Sigma)}
+if (dist == "Student"){z<- rMT(n,mu=matrix(0,1,p),Sigma,nu)}
+if (dist == "Slash"){z<- rMSL(n,mu=matrix(0,1,p),Sigma,nu)}
+if (dist == "Cont"){nu1=nu[1]
+gama=nu[2]
+z<- rMCN (n,mu=matrix(0,1,p),Sigma,nu=nu1, gamma=gama)}
+
+for (i in 1:n){
+    for (j in 1:p){
+        t[i,j]=(beta[j]/4)*(alpha[j]*z[i,j]+sqrt( (alpha[j]*z[i,j])^2+4) )^2
+    }
+}
+
+return(t)
+
+}
+
+

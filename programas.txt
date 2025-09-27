@@ -1,0 +1,528 @@
+matrix.sqrt <- function(A) {
+  sva <- svd(A)
+  if (min(sva$d)>=0)
+    Asqrt <- t(sva$v %*% (t(sva$u) * sqrt(sva$d)))
+  else
+    stop("Matrix square root is not defined")
+  return(Asqrt)
+}
+
+rBS<-function(n,nu,eta){
+
+z=matrix(0,n,1)
+
+z0<- rnorm(n,mean=0,sd=1)
+
+for (i in 1:n){  
+        z[i]=(eta/4)*(nu*z0[i]+sqrt( (nu*z0[i])^2+4) )^2
+
+
+    }
+
+
+return(z)
+
+}
+
+
+rSMNBS <-
+function(n, mu,Sigma, nu=nu){
+  if(is.null(n))
+    stop("sample size must be specified")
+  if(is.null(mu))
+    stop("mu must be specified")
+  if(is.null(Sigma))
+    stop("Sigma must be specified")
+    if(is.vector(Sigma)) Sigma=matrix(Sigma)  
+  if(round(n)!=n | n<=0)
+    stop("sample size must be a positive integer")      
+  if(!is.matrix(mu)) mu<-matrix(mu, ncol=length(mu),nrow=1)
+  if (!isSymmetric(Sigma))
+        stop("Sigma is not symmetric")
+  if (min(eigen(Sigma)$values)<=0)
+        stop("Sigma is not a positive-definite matrix")
+  if (ncol(Sigma) != ncol(mu))
+        stop("The dimension of mu does not agree with the dimension of Sigma")
+  if(nu<0)
+        stop("nu must be positive")
+  p<-ncol(Sigma)
+  y<-matrix(0,n,p)
+  for(i in 1:n){
+      u=rBS(n=1,nu,eta=1)
+      y[i,]=as.vector(mu)+MASS::mvrnorm(1,rep(0,p),Sigma*as.numeric(u))
+  } 
+  return(y) 
+}
+ 
+
+gera<-function(n,p,alpha,beta,Sigma,nu){
+
+t=matrix(0,n,p)
+
+
+at1<- rSMNBS (n,mu=matrix(0,1,p),Sigma,nu=nu)
+
+for (i in 1:n){
+    for (j in 1:p){
+        t[i,j]=(beta[j]/4)*( alpha[j]*at1[i,j]+sqrt( (alpha[j]*at1[i,j])^2+4) )^2
+          
+    }
+}
+
+return(t)
+
+}
+
+
+Qbeta<-function(beta,t,alpha,Sigma,u1){
+n=dim(t)[1]
+p=dim(t)[2]
+
+eta=matrix(0,n,p)
+epsilon=matrix(c(0),n,p)
+at=matrix(c(0),n,p)
+for (j in 1:p){
+eta[,j]=beta[j]
+epsilon[,j]=sqrt(t[,j]/eta[,j])-sqrt(eta[,j]/t[,j])
+at[,j]=epsilon[,j]/alpha[j]
+}
+
+auxQbeta=matrix(0,n,1)
+dt=matrix(0,n,1)
+for (d in 1:n){
+    dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+    auxQbeta[d]=u1[d]*dt[d]
+}
+if(p>1){
+  Q=-n*log(apply(alpha,2,prod))-0.5*sum(log(apply(eta,1,prod)))-(n/2)*log(det(Sigma))+sum(apply(log(t+eta),1,sum))-0.5*sum(auxQbeta)
+  }else{
+    Q=-n*log(apply(alpha,2,prod))-0.5*sum(log(apply(eta,1,prod)))+sum(apply(log(t+eta),1,sum))-0.5*sum(auxQbeta)
+  }
+return(Q)
+}
+
+
+
+# Generalized multivariate BirnbaumSaunders distributions and related inferential issues (2013): section 4.1.2
+
+chuteini<-function(t){
+
+n=dim(t)[1]
+p=dim(t)[2]
+
+
+epsilon=matrix(0,n,p)
+at=matrix(0,n,p)
+
+s=apply(t,2,mean)
+r=1/apply(1/t,2,mean)
+
+alpha=matrix(sqrt(2*(sqrt(s/r)-1)),p,1)
+beta=matrix(sqrt(s*r),p,1)
+
+
+for (j in 1:p) {
+epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+at[,j]=epsilon[,j]/alpha[j]
+}
+
+
+if (p!=1){
+
+D=matrix(1,p,p)
+
+for (hh in 1:(p-1)){
+  for (jj in (hh+1):p ){
+
+D[hh,jj]= sum(epsilon[,hh]*epsilon[,jj])/(sqrt((sum(epsilon[,hh]^2))*(sum( epsilon[,jj]^2))))
+D[jj,hh]=D[hh,jj]
+
+}
+}
+}
+
+if (p==1){D=1}
+
+result = list(alpha = alpha, beta=beta, D=D)
+return(result)
+}
+
+
+R<-function(omega,lambda,m){
+R=besselK(omega,(lambda+m))/besselK(omega,lambda)
+return(R)
+}
+
+
+vero<-function(t,alpha,beta,Sigma,nu){
+
+mm=dim(t)[1]
+p=dim(t)[2]
+
+
+epsilon=matrix(0,mm,p)
+at=matrix(0,mm,p)
+Atparte=matrix(0,mm,p)
+vero1=matrix(0,mm,1)
+
+
+
+for (j in 1:p) {
+epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+at[,j]=epsilon[,j]/alpha[j]
+Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+}   
+At=apply(Atparte,1,prod)
+
+lambda1=(-p+1)/2
+lambda2=(-p-1)/2
+a1=(2*pi)^(-p/2)*(nu^((p-1)/2)*besselK(nu^(-2),1/2))^(-1)
+a2=(2*pi)^(-p/2)*(nu^((p+1)/2)*besselK(nu^(-2),-1/2))^(-1)
+
+for (d in 1:mm){
+	dt1=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+	qt=sqrt(nu^(-2)+dt1)
+	omega=nu^(-1)*qt	
+	f1=a1*qt^lambda1*besselK(omega,lambda1)
+	f2=a2*qt^lambda2*besselK(omega,lambda2)
+        funk=f1+f2
+
+	vero1[d]=-0.5*log(det(Sigma))+log(At[d])+log(0.5*funk)
+
+}
+
+vero=sum(vero1)
+return(vero)
+}
+
+gt<-function(t,alpha,beta,Sigma,nu){
+
+mm=dim(t)[1]
+p=dim(t)[2]
+
+
+epsilon=matrix(0,mm,p)
+at=matrix(0,mm,p)
+Atparte=matrix(0,mm,p)
+vero11=matrix(0,mm,1)
+
+
+
+for (j in 1:p) {
+epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+at[,j]=epsilon[,j]/alpha[j]
+}   
+
+
+lambda1=(-p+1)/2
+lambda2=(-p-1)/2
+a1=(2*pi)^(-p/2)*(nu^((p-1)/2)*besselK(nu^(-2),1/2))^(-1)
+a2=(2*pi)^(-p/2)*(nu^((p+1)/2)*besselK(nu^(-2),-1/2))^(-1)
+
+for (d in 1:mm){
+	dt1=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+	qt=sqrt(nu^(-2)+dt1)
+	omega=nu^(-1)*qt	
+	f1=a1*qt^lambda1*besselK(omega,lambda1)
+	f2=a2*qt^lambda2*besselK(omega,lambda2)
+        funk=f1+f2	
+        vero11[d]=0.5*(funk)
+
+}
+
+gt=vero11
+return(gt)
+}
+
+
+esper<-function(m,p,nu,dt1,gtf){
+
+qt=sqrt(nu^(-2)+dt1)
+omega=nu^(-1)*qt
+lambda1=(-p+1)/2
+lambda2=(-p-1)/2
+p1t=(nu*qt)^(lambda1)*besselK(omega,lambda1)/(2*(2*pi)^(p/2)*gtf*besselK(nu^(-2),1/2))
+p2t=(nu*qt)^(lambda2)*besselK(omega,lambda2)/(2*(2*pi)^(p/2)*gtf*besselK(nu^(-2),-1/2))
+#check=p1t+p2t
+#print(check)
+
+u=((nu*qt)^(m))*(p1t*R(omega,lambda=lambda1,m)+p2t*R(omega,lambda=lambda2,m))
+
+return(u)
+
+
+}
+
+
+
+em<-function(t,error,lb,lu,nu){
+
+chute<-chuteini(t)
+alpha<-chute$alpha
+beta=chute$beta
+Sigma=chute$D
+
+########################################### altera chute inicial nu
+epsilon=matrix(c(0),n,p)
+at=matrix(c(0),n,p)
+dt=matrix(0,n,1)
+gt1=matrix(0,n,1)
+u1=matrix(0,n,1)
+u2=matrix(0,n,1)
+
+for (j in 1:p){
+epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+at[,j]=epsilon[,j]/alpha[j]
+}
+
+for (d in 1:n){
+    dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+    t1=matrix(t[d,],1,p) 
+    gt1[d]=gt(t1,alpha,beta,Sigma,nu)
+
+#ETAPA E
+
+u1[d]<-esper(m=-1,p,nu,dt1=dt[d],gtf=gt1[d])
+u2[d]<-esper(m=1,p,nu,dt1=dt[d],gtf=gt1[d])
+
+}
+nu=sqrt(mean(u2+u1-2))
+
+print(nu)
+################################################################
+
+n=dim(t)[1]
+p=dim(t)[2]
+
+
+criterio <- 1
+cont=0
+#Sigma1ante=c(Sigma[lower.tri(Sigma)])
+#thetaante=c(alpha,beta,Sigma1ante,nu)
+lkante <- 1
+
+while (criterio > error){
+    
+cont=cont+1
+epsilon=matrix(c(0),n,p)
+at=matrix(c(0),n,p)
+dt=matrix(0,n,1)
+gt1=matrix(0,n,1)
+u1=matrix(0,n,1)
+u2=matrix(0,n,1)
+
+for (j in 1:p){
+epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+at[,j]=epsilon[,j]/alpha[j]
+}
+
+for (d in 1:n){
+    dt[d]=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+    t1=matrix(t[d,],1,p) 
+    gt1[d]=gt(t1,alpha,beta,Sigma,nu)
+
+#ETAPA E
+
+u1[d]<-esper(m=-1,p,nu,dt1=dt[d],gtf=gt1[d])
+u2[d]<-esper(m=1,p,nu,dt1=dt[d],gtf=gt1[d])
+
+}
+
+
+#ETAPA M 
+
+
+for (j in 1:p){
+alpha[j]=sqrt(mean(u1*(t[,j]/beta[j]))+mean(u1*(beta[j]/t[,j]))-2*mean(u1))
+}
+
+
+#print(alpha)
+
+
+beta.old=beta
+beta <- optim(beta.old, Qbeta, gr=NULL, t,alpha,Sigma,u1, control = list(fnscale = -1), method = "L-BFGS-B", lower = lb, upper = lu)$par
+
+
+Sigma=matrix(0,p,p)
+
+for (j in 1:p){
+for (k in 1:p){
+Sigma[j,k]= sum(u1*epsilon[,j]*epsilon[,k])/(sqrt(sum(u1*epsilon[,j]^2))*sqrt(sum(u1*epsilon[,k]^2)))
+}
+}
+
+#print(Sigma)
+
+nu=sqrt(mean(u2+u1-2))
+
+
+
+lk=vero(t,alpha,beta,Sigma,nu)
+criterio <- abs((lk/lkante)-1)
+lkante <- lk
+
+#  outro criterio de parada
+Sigma1=c(Sigma[lower.tri(Sigma)])
+theta=c(alpha,beta,Sigma1,nu)
+#criterio <- sqrt(sum(((theta-thetaante)/thetaante)^2))
+#thetaante <- theta
+
+
+
+   } 
+
+object.out = list(alpha = alpha, beta=beta, Sigma=Sigma,lk=lk,nu=nu,theta=theta,u1=u1,u2=u2,dt=dt)
+return(object.out)
+}
+
+
+library(numDeriv)#for numeric derivatives
+
+veroderiva<-function(theta,t){
+
+
+mm=dim(t)[1]
+p=dim(t)[2]
+
+
+alpha=matrix(theta[1:p],p,1)
+beta=matrix(theta[(p+1):(2*p)],p,1)
+
+##### contexto bivariado - alterar para p diferente de 2!!!!
+
+#rho=theta[(2*p+1)]
+#nu=theta[(2*p+2)]
+
+Sigma=matrix(c(1,theta[(2*p+1)],theta[(2*p+2)],theta[(2*p+1)],1, theta[(2*p+3)],theta[(2*p+2)],theta[(2*p+3)],1),p,p)
+nu=theta[(2*p+4)]
+
+
+epsilon=matrix(0,mm,p)
+at=matrix(0,mm,p)
+Atparte=matrix(0,mm,p)
+vero1=matrix(0,mm,1)
+
+
+
+for (j in 1:p) {
+epsilon[,j]=sqrt(t[,j]/beta[j])-sqrt(beta[j]/t[,j])
+at[,j]=epsilon[,j]/alpha[j]
+Atparte[,j]= (t[,j]+beta[j])/(2*alpha[j]*sqrt(beta[j])*sqrt(t[,j]^3))
+}   
+At=apply(Atparte,1,prod)
+
+lambda1=(-p+1)/2
+lambda2=(-p-1)/2
+a1=(2*pi)^(-p/2)*(nu^((p-1)/2)*besselK(nu^(-2),1/2))^(-1)
+a2=(2*pi)^(-p/2)*(nu^((p+1)/2)*besselK(nu^(-2),-1/2))^(-1)
+
+for (d in 1:mm){
+	dt1=as.numeric(at[d,]%*%solve(Sigma)%*%t(t(at[d,])))
+	qt=sqrt(nu^(-2)+dt1)
+	omega=nu^(-1)*qt	
+	f1=a1*qt^lambda1*besselK(omega,lambda1)
+	f2=a2*qt^lambda2*besselK(omega,lambda2)
+        funk=f1+f2
+
+	vero1[d]=-0.5*log(det(Sigma))+log(At[d])+log(0.5*funk)
+
+}
+
+vero=vero1
+return(vero)
+}
+veroderiva2 <- function(theta, t) {
+  mm <- dim(t)[1]
+  p <- dim(t)[2]
+  
+  # Extraer parámetros
+  alpha <- matrix(theta[1:p], p, 1)
+  beta  <- matrix(theta[(p + 1):(2 * p)], p, 1)
+  
+  # Construir matriz Sigma (simétrica, con 1s en diagonal)
+  sigma_elements <- theta[(2 * p + 1):(2 * p + p * (p - 1) / 2)]
+  Sigma <- diag(1, p)
+  
+  # Llenar triángulo superior (sin diagonal)
+  upper_indices <- which(upper.tri(Sigma))
+  Sigma[upper_indices] <- sigma_elements
+  
+  # Hacer simétrica
+  Sigma <- Sigma + t(Sigma) - diag(diag(Sigma))
+  
+  # Extraer nu
+  nu <- theta[length(theta)]
+  
+  # Prealocar estructuras
+  epsilon <- matrix(0, mm, p)
+  at <- matrix(0, mm, p)
+  Atparte <- matrix(0, mm, p)
+  vero1 <- numeric(mm)
+  
+  for (j in 1:p) {
+    epsilon[, j]  <- sqrt(t[, j] / beta[j]) - sqrt(beta[j] / t[, j])
+    at[, j]       <- epsilon[, j] / alpha[j]
+    Atparte[, j]  <- (t[, j] + beta[j]) / (2 * alpha[j] * sqrt(beta[j]) * sqrt(t[, j]^3))
+  }
+  
+  At <- apply(Atparte, 1, prod)
+  
+  lambda1 <- (-p + 1) / 2
+  lambda2 <- (-p - 1) / 2
+  a1 <- (2 * pi)^(-p / 2) * (nu^((p - 1) / 2) * besselK(nu^(-2), 1/2))^(-1)
+  a2 <- (2 * pi)^(-p / 2) * (nu^((p + 1) / 2) * besselK(nu^(-2), -1/2))^(-1)
+  
+  for (d in 1:mm) {
+    at_d <- matrix(at[d, ], 1, p)
+    dt1 <- as.numeric(at_d %*% solve(Sigma) %*% t(at_d))
+    qt <- sqrt(nu^(-2) + dt1)
+    omega <- nu^(-1) * qt
+    f1 <- a1 * qt^lambda1 * besselK(omega, lambda1)
+    f2 <- a2 * qt^lambda2 * besselK(omega, lambda2)
+    funk <- f1 + f2
+    
+    vero1[d] <- -0.5 * log(det(Sigma)) + log(At[d]) + log(0.5 * funk)
+  }
+  
+  return(vero1)
+}
+
+erropadrao<-function(t,theta){
+
+n=dim(t)[1]
+p=dim(t)[2]
+
+parte=matrix(0,2*p+1+p*(p-1)/2,2*p+1+p*(p-1)/2)
+for (gg in 1:n){
+t1=matrix(t[gg,],1,p)
+der1=grad(veroderiva,theta,t=t1)
+parte=parte+der1%*%t(der1)
+}
+
+i=parte/n
+cov=solve(i)/n
+
+erropad=sqrt(diag(cov))
+return(erropad)
+}
+erropadrao2<-function(t,theta){
+
+n=dim(t)[1]
+p=dim(t)[2]
+
+parte=matrix(0,2*p+1+p*(p-1)/2,2*p+1+p*(p-1)/2)
+for (gg in 1:n){
+t1=matrix(t[gg,],1,p)
+der1=grad(veroderiva2,theta,t=t1)
+parte=parte+der1%*%t(der1)
+}
+
+i=parte/n
+cov=solve(i)/n
+
+erropad=sqrt(diag(cov))
+return(erropad)
+}
+
+
