@@ -1,0 +1,165 @@
+momentosbs <- function(nu, m) {
+  if (m == 1) {
+    result = 0.5 * (2 + nu^2)
+  } else if (m == 2) {
+    result = 0.5 * (2 + 4 * nu^2 + 3 * nu^4)
+  } else if (m == 3) {
+    result = 0.5 * (2 + 9 * nu^2 + 18 * nu^4 + 15 * nu^6)
+  } else if (m == 4) {
+    result = 0.5 * (2 + 16 * nu^2 + 60 * nu^4 + 120 * nu^6 + 105 * nu^8)
+  } else {
+    result = NA
+    warning("m until 4th moment")
+  }
+  return(result)
+}
+momentost<-function(nu,k){
+  result=(gamma((nu-(2*k))/2))/(gamma(nu/2))*(nu/2)^k
+  return(result)
+  
+}
+momentost(6,4)
+kurtosisbst<-function(alpha,nu,dist){
+  if(dist=="BSt"){
+    a4=840*momentosbs(nu,4)-240*momentosbs(nu,1)*momentosbs(nu,3)+
+      36*((momentosbs(nu,1))^2)*momentosbs(nu,2)-3*((momentosbs(nu,1))^4)
+    
+    kurto=(48*momentosbs(nu,2)+(480*momentosbs(nu,3)-144*momentosbs(nu,1)*momentosbs(nu,2)+
+                                   24*(momentosbs(nu,1)^3))*(alpha^2)+a4*(alpha^4))/((4*momentosbs(nu,1)+
+                                                                                     (6*momentosbs(nu,2)-(momentosbs(nu,1)^2))*(alpha^2))^2)
+      
+  }
+  if(dist=="Student"){
+    a4=840*momentost(nu,4)-240*momentost(nu,1)*momentost(nu,3)+
+      36*((momentost(nu,1))^2)*momentost(nu,2)-3*((momentost(nu,1))^4)
+    kurto=(48*momentost(nu,2)+(480*momentost(nu,3)-144*momentost(nu,1)*momentost(nu,2)+
+                                 24*(momentost(nu,1)^3))*alpha^2+a4*(alpha^4))/(4*momentost(nu,1)+
+                                                                                  (6*momentost(nu,2)-(momentost(nu,1)^2))*(alpha^2))^2
+  }
+  if(dist=="Normal"){
+    kurto=(48+360*alpha^2+633*alpha^4)/(4+5*alpha^2)^2
+  }
+return(kurto)
+  }
+kurtosismnbs<-function(p,nu,dist){
+  if(dist=="bs"){
+  result=2*p*(p+2)*(2+4*nu^2+3*nu^4)/(4+4*nu^2+nu^4)}
+  if(dist=="St"){
+    result=p*(p+2)*(nu-2)/(nu-4)  
+  }
+  if(dist=="Normal"){result=p*(p+2)}
+  return(result)
+}
+
+# Vector con los valores
+# Matriz con pares (valor1, valor2)
+valores <- matrix(c(
+  0.0958, 0.1129,
+  0.0972, 0.1018,
+  0.0810, 0.0862,
+  0.0816, 0.0868,
+  0.0909, 0.1123,
+  0.1139, 0.1294,
+  0.0803, 0.0902,
+  0.0863, 0.0922,
+  0.1084, 0.1277,
+  0.0806, 0.0894
+), ncol = 2, byrow = TRUE)
+
+# Aplicar kurtosisbst como antes:
+
+# Función personalizada para aplicar la fórmula
+resultados <- apply(valores, 1, function(x) {
+  val_bst <- kurtosisbst(x[1], 0.6260, dist = "BSt")
+  val_student <- kurtosisbst(x[2], 100, dist = "Normal")
+  c(BSt = val_bst, Student = val_student)
+})
+
+# Transponer para que cada fila sea una observación
+resultados <- t(resultados)
+colnames(resultados) <- c("BSt", "BS")
+resultados<-cbind(resultados,c(6.3609 ,4.3201 ,5.1536 ,4.3508, 24.3671, 4.8859, 
+                               4.5323, 4.5732, 8.5797, 5.0377))
+# Ver resultados
+print(resultados)
+xtable(resultados,digits=4)
+
+nu=0.2
+alpha=seq(0,5,by=0.001)
+t=kurtosisbst(alpha,nu,dist="Normal")
+bst=kurtosisbst(alpha,nu,dist="BSt")
+plot(alpha,t,type="l",xlab=expression(alpha),ylab=expression(kappa[4](t)),ylim=c(0,350)
+     ,main=expression(nu == 0.2),cex.main=1.5)
+lines(alpha,bst,col="darkred",lty=2)
+legend("topleft", legend=c("BS","BSt"),col=c( "black","darkred"), inset=.02,cex=0.8,lty = c(1,2),lwd=2)
+nu=0.5
+t=kurtosisbst(alpha,nu,dist="Normal")
+bst=kurtosisbst(alpha,nu,dist="BSt")
+plot(alpha,t,type="l",xlab=expression(alpha),ylab=expression(kappa[4](t)),ylim=c(0,350),main=expression(nu == 0.5),cex.main=1.5)
+lines(alpha,bst,col="darkred",lty=2)
+legend("topleft", legend=c("BS","BSt"),col=c( "black","darkred"), inset=.02,cex=0.8,lty = c(1,2),lwd=2)
+nu=1
+t=kurtosisbst(alpha,nu,dist="Normal")
+bst=kurtosisbst(alpha,nu,dist="BSt")
+plot(alpha,t,type="l",xlab=expression(alpha),ylab=expression(kappa[4](t)),ylim=c(0,350),main=expression(nu == 1),cex.main=1.5)
+lines(alpha,bst,col="darkred",lty=2)
+legend("topleft", legend=c("BS","BSt"),col=c( "black","darkred"), inset=.02,cex=0.8,lty = c(1,2),lwd=2)
+nu=1.5
+t=kurtosisbst(alpha,nu,dist="Normal")
+bst=kurtosisbst(alpha,nu,dist="BSt")
+plot(alpha,t,type="l",xlab=expression(alpha),ylab=expression(kappa[4](t)),ylim=c(0,350),main=expression(nu == 1.5),cex.main=1.5)
+lines(alpha,bst,col="darkred",lty=2)
+legend("topleft", legend=c("BS","BSt"),col=c( "black","darkred"), inset=.02,cex=0.8,lty = c(1,2),lwd=2)
+
+
+
+######kurtosis
+nu=seq(0,12,by=0.1)
+nu2=seq(4.2,12,by=0.1)
+t=kurtosismnbs(1,nu2,dist="St")
+bst=kurtosismnbs(1,1/nu,dist="bs")
+plot(nu2,t,type = "l",col="darkred",xlim=c(0,10),ylim=c(0,20),lty=3,xlab = expression(nu),ylab="Kurtosis")
+abline(a=3,b=0,type="l")
+lines(nu,bst,col="blue",lty=2)
+legend("topright", legend=c("N(0,1)","St(0,1;v)","SMNBS(0,1;1/v)"),col=c( "black","darkred","blue"), inset=.02,cex=0.8,lty = c(1,3,2),lwd=2)
+
+#####variando nu
+alpha=0.5
+nu2=seq(8.2,100,by=0.001)
+nu=seq(0,100,by=0.001)
+bst=kurtosisbst(alpha,1/nu,dist="BSt")
+t=kurtosisbst(alpha,nu2,dist="Student")
+plot(nu2,t,type="l",xlab=expression(nu),ylab=expression(kappa[4](t)),xlim=c(0,100),ylim=c(5,100),col="darkred",lty=3,main=expression(alpha == 0.5),cex.main=1.5)
+lines(nu,bst,col="blue",lty=2)
+abline(a=kurtosisbst(alpha,nu,dist="Normal"),b=0)
+legend("topright", legend=c("BS","StBS(0,1;v)","BSt(0,1;1/v)"),col=c( "black","darkred","blue"), inset=.02,cex=0.8,lty = c(1,3,2),lwd=2)
+alpha=1
+nu2=seq(8.5,100,by=0.001)
+nu=seq(0,100,by=0.001)
+bst=kurtosisbst(alpha,1/nu,dist="BSt")
+t=kurtosisbst(alpha,nu2,dist="Student")
+plot(nu2,t,type="l",xlab=expression(nu),ylab=expression(kappa[4](t)),xlim=c(0,100),ylim=c(5,100),col="darkred",lty=3,main=expression(alpha == 1),cex.main=1.5)
+lines(nu,bst,col="blue",lty=2)
+abline(a=kurtosisbst(alpha,nu,dist="Normal"),b=0)
+legend("topright", legend=c("BS","StBS(0,1,v)","BSt(0,1,1/v)"),col=c( "black","darkred","blue"), inset=.02,cex=0.8,lty = c(1,3,2),lwd=2)
+alpha=1.5
+nu2=seq(8.5,100,by=0.001)
+nu=seq(0,100,by=0.001)
+normal=kurtosisbst(alpha,nu,dist="Normal")
+bst=kurtosisbst(alpha,1/nu,dist="BSt")
+t=kurtosisbst(alpha,nu2,dist="Student")
+plot(nu2,t,type="l",xlab=expression(nu),ylab=expression(kappa[4](t)),xlim=c(0,100),ylim=c(5,100),col="darkred",lty=3,main=expression(alpha == 1.5),cex.main=1.5)
+lines(nu,bst,col="blue",lty=2)
+abline(a=kurtosisbst(alpha,nu,dist="Normal"),b=0)
+legend("topright", legend=c("BS","StBS(0,1,v)","BSt(0,1,1/v)"),col=c( "black","darkred","blue"), inset=.02,cex=0.8,lty = c(1,3,2),lwd=2)
+alpha=2
+nu2=seq(8.5,100,by=0.001)
+nu=seq(0,100,by=0.001)
+normal=kurtosisbst(alpha,nu,dist="Normal")
+bst=kurtosisbst(alpha,1/nu,dist="BSt")
+t=kurtosisbst(alpha,nu2,dist="Student")
+plot(nu2,t,type="l",xlab=expression(nu),ylab=expression(kappa[4](t)),xlim=c(0,100),ylim=c(5,100),col="darkred",lty=3,main=expression(alpha == 2),cex.main=1.5)
+lines(nu,bst,col="blue",lty=2)
+abline(a=kurtosisbst(alpha,nu,dist="Normal"),b=0)
+legend("topright", legend=c("BS","StBS(0,1,v)","BSt(0,1,1/v)"),col=c( "black","darkred","blue"), inset=.02,cex=0.8,lty = c(1,3,2),lwd=2)
+
